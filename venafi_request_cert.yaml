@@ -1,0 +1,45 @@
+- hosts: localhost
+  vars:
+    common_name: www.example.com
+    certificate_crt_path: /path/to/certificate.crt
+    certificate_key_path: /path/to/certificate.key
+    pfx_path: /path/to/griffin-uat4.bankofamerica.com.pfx
+
+  vars_files:
+    - vault.yml
+
+  tasks:
+    - name: Generate Private Key
+      openssl_privatekey:
+        path: "{{ certificate_key_path }}"
+
+    - name: Generate CSR for certificate.crt
+      openssl_csr:
+        path: /path/to/csr_certificate.pem
+        privatekey_path: "{{ certificate_key_path }}"
+        common_name: "{{ common_name }}"
+
+    - name: Request certificate.crt from Venafi
+      venafi_certificate:
+        api_endpoint: "{{ venafi_api_endpoint }}"
+        token: "{{ venafi_token }}"
+        csr_path: /path/to/csr_certificate.pem
+        cert_path: "{{ certificate_crt_path }}"
+        chain_option: first
+      register: venafi_certificate_output
+
+    - name: Generate CSR for griffin-uat4.bankofamerica.com.pfx
+      openssl_csr:
+        path: /path/to/csr_pfx.pem
+        privatekey_path: "{{ certificate_key_path }}"
+        common_name: "griffin-uat4.bankofamerica.com"
+
+    - name: Request griffin-uat4.bankofamerica.com.pfx from Venafi
+      venafi_certificate:
+        api_endpoint: "{{ venafi_api_endpoint }}"
+        token: "{{ venafi_token }}"
+        csr_path: /path/to/csr_pfx.pem
+        cert_path: "{{ pfx_path }}"
+        cert_format: pfx
+        pfx_password: "{{ pfx_password }}"
+        chain_option: first
